@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Кассеты с купюрами</title>
+    </head>
+    <body>
+        <h1>Кассеты с купюрами</h1>
+
+        <h2>Настройки кассет:</h2>
+        <form id="cassetteForm">
+            <label for="numCassettes">Количество кассет (1-8):</label>
+            <input type="number" id="numCassettes" min="1" max="8" required />
+            <br />
+
+            <h3>Настройки для каждой кассеты:</h3>
+            <div id="cassetteSettings"></div>
+        </form>
+
+        <h2>Расчет суммы:</h2>
+        <label for="requestedAmount">Введите сумму (руб):</label>
+        <input type="number" id="requestedAmount" min="0" required />
+        <br />
+        <button id="calculateButton">Рассчитать</button>
+
+        <h2>Результат:</h2>
+        <p id="result"></p>
+        <p id="calculationTime"></p>
+
+        <script>
+            document.getElementById("numCassettes").addEventListener("change", function () {
+                const numCassettes = parseInt(this.value);
+                const cassetteSettings = document.getElementById("cassetteSettings");
+
+                cassetteSettings.innerHTML = "";
+
+                for (let i = 1; i <= numCassettes; i++) {
+                    const cassetteDiv = document.createElement("div");
+                    cassetteDiv.classList.add("cassette");
+
+                    cassetteDiv.innerHTML = `
+                    <h4>Кассета ${i}:</h4>
+                    <label for="denomination${i}">Номинал (руб):</label>
+                    <select id="denomination${i}" required>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                        <option value="500">500</option>
+                        <option value="1000">1000</option>
+                        <option value="2000">2000</option>
+                        <option value="5000">5000</option>
+                    </select>
+                    <br>
+                    <label for="remaining${i}">Купюр осталось:</label>
+                    <input type="number" id="remaining${i}" min="0" required>
+                    <br>
+                    <label for="status${i}">Статус (исправна/неисправна):</label>
+                    <select id="status${i}">
+                        <option value="исправна">Исправна</option>
+                        <option value="неисправна">Неисправна</option>
+                    </select>
+                `;
+
+                    cassetteSettings.appendChild(cassetteDiv);
+                }
+            });
+
+            document.getElementById("calculateButton").addEventListener("click", function () {
+                const numCassettes = parseInt(document.getElementById("numCassettes").value);
+                const requestedAmount = parseInt(document.getElementById("requestedAmount").value);
+                const cassetteSettings = [];
+
+                for (let i = 1; i <= numCassettes; i++) {
+                    const denomination = parseInt(
+                        document.getElementById(`denomination${i}`).value
+                    );
+                    const remaining = parseInt(document.getElementById(`remaining${i}`).value);
+                    const status = document.getElementById(`status${i}`).value;
+                    cassetteSettings.push({ denomination, remaining, status });
+                }
+
+                const startTime = performance.now();
+                const result = calculateAmount(cassetteSettings, requestedAmount);
+                const endTime = performance.now();
+                const calculationTime = endTime - startTime;
+
+                document.getElementById("result").textContent = result
+                    ? `Можно выдать: ${JSON.stringify(result)}`
+                    : "Нельзя выдать указанную сумму";
+                document.getElementById(
+                    "calculationTime"
+                ).textContent = `Время расчета: ${calculationTime.toFixed(3)} мс`;
+            });
+
+            function calculateAmount(cassettes, amount) {
+                const sortedCassettes = cassettes
+                    .filter((cassette) => cassette.status === "исправна")
+                    .sort((a, b) => b.denomination - a.denomination);
+
+                let remainingAmount = amount;
+                const result = {};
+
+                for (const cassette of sortedCassettes) {
+                    if (cassette.remaining > 0) {
+                        const numNotesToDispense = Math.min(
+                            Math.floor(remainingAmount / cassette.denomination),
+                            cassette.remaining
+                        );
+
+                        if (numNotesToDispense > 0) {
+                            result[cassette.denomination] = numNotesToDispense;
+                            remainingAmount -= numNotesToDispense * cassette.denomination;
+                        }
+                    }
+                }
+
+                return remainingAmount === 0 ? result : null;
+            }
+        </script>
+    </body>
+</html>
